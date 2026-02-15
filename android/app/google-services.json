@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "107717002075",
+    "project_id": "smartsaver-7d551",
+    "storage_bucket": "smartsaver-7d551.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:107717002075:android:61d1a4ff71cf12e63d107e",
+        "android_client_info": {
+          "package_name": "com.example.smart_saver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTM0vwd4KSnWxLMQr6AiARpwH7CcXoXyQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
