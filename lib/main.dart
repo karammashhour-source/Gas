@@ -6460,13 +6460,44 @@ class NotificationService {
       playSound: playSound,
     );
     NotificationDetails details = NotificationDetails(android: androidDetails);
-    await _notificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      title,
-      body,
-      details,
-      payload: jsonEncode(mergedPayload),
-    );
+    try {
+      await _notificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title,
+        body,
+        details,
+        payload: jsonEncode(mergedPayload),
+      );
+    } catch (e) {
+      debugPrint('Error showing notification with custom sound: $e');
+      // Fallback to default sound if custom sound resource is missing (e.g. raw/alarm.mp3)
+      if (e.toString().contains('invalid_sound')) {
+        debugPrint('Falling back to default notification sound');
+        AndroidNotificationDetails fallbackAndroidDetails =
+            AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'This channel is used for important notifications.',
+          importance: Importance.high,
+          priority: Priority.high,
+          color: accentColor,
+          styleInformation: bigTextStyleInformation,
+          ledColor: accentColor,
+          ledOnMs: 1000,
+          ledOffMs: 500,
+          enableLights: true,
+          icon: resourceName,
+          largeIcon: DrawableResourceAndroidBitmap(resourceName),
+        );
+        await _notificationsPlugin.show(
+          DateTime.now().millisecondsSinceEpoch.remainder(100000),
+          title,
+          body,
+          NotificationDetails(android: fallbackAndroidDetails),
+          payload: jsonEncode(mergedPayload),
+        );
+      }
+    }
   }
 
   static Future<void> clearAll() async {
