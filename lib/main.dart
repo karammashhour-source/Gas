@@ -18,6 +18,8 @@ import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'firebase_service.dart'; // Import the new service
 import 'package:firebase_core/firebase_core.dart';
 import 'mqtt_service.dart';
+import 'bluetooth_service.dart'; // Import Bluetooth Service
+import 'package:flutter_blue_plus/flutter_blue_plus.dart'; // For Bluetooth types
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'dart:convert'; // For JSON encoding/decoding
@@ -1603,6 +1605,8 @@ class _MainDashboardState extends State<MainDashboard>
   final FirebaseService _firebaseService = FirebaseService();
   // MQTT Service Instance
   final MqttService _mqttService = MqttService();
+  // Bluetooth Service Instance
+  final GasBluetoothService _bluetoothService = GasBluetoothService();
 
   final List<FlSpot> _gasLevelHistory = [];
   final List<DateTime> _gasLevelTimestamps = [];
@@ -1635,6 +1639,8 @@ class _MainDashboardState extends State<MainDashboard>
     _loadPreferences();
     _attachDataListenersOnce();
     _listenToService();
+    _bluetoothService.init(); // Initialize Bluetooth
+    _bluetoothService.gasLevel.addListener(_onBluetoothGasLevelChanged);
     gasLevelResetNotifier.addListener(_onGasLevelResetRequested);
     _setupFCM(); // تفعيل إعدادات الإشعارات
   }
@@ -1647,6 +1653,7 @@ class _MainDashboardState extends State<MainDashboard>
     _firebaseService.lastError.removeListener(_onFirebaseErrorChanged);
     _firebaseService.gasLevel.removeListener(_onFirebaseGasLevelChanged);
     _mqttService.gasLevel.removeListener(_onMqttGasLevelChanged);
+    _bluetoothService.gasLevel.removeListener(_onBluetoothGasLevelChanged);
     gasLevelResetNotifier.removeListener(_onGasLevelResetRequested);
     _breathingController.dispose();
     _audioPlayer.dispose();
@@ -1971,6 +1978,17 @@ class _MainDashboardState extends State<MainDashboard>
       _currentGasLevel = _mqttService.gasLevel.value;
       _updateGraphData();
       _handleAlarmSound();
+    });
+  }
+
+  void _onBluetoothGasLevelChanged() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _currentGasLevel = _bluetoothService.gasLevel.value;
+      _updateGraphData();
+      _handleAlarmSound(); // This triggers local notification if level is high
     });
   }
 
@@ -3791,6 +3809,20 @@ class _MainDashboardState extends State<MainDashboard>
                     child: Column(
                       children: [
                         ListTile(
+                          leading: const Icon(Icons.bluetooth),
+                          title: const Text("اتصال بلوتوث (ESP32)"),
+                          subtitle: ValueListenableBuilder<bool>(
+                            valueListenable: _bluetoothService.isConnected,
+                            builder: (context, isConnected, child) {
+                              return Text(isConnected ? "متصل" : "غير متصل");
+                            },
+                          ),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const BluetoothScanScreen()));
+                          },
+                        ),
+                        ListTile(
                           leading: const Icon(Icons.language),
                           title: Text(strings.get('change_language')),
                           trailing: const Icon(
@@ -4228,6 +4260,74 @@ class _MainDashboardState extends State<MainDashboard>
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class BluetoothScanScreen extends StatefulWidget {
+  const BluetoothScanScreen({super.key});
+
+  @override
+  State<BluetoothScanScreen> createState() => _BluetoothScanScreenState();
+}
+
+class _BluetoothScanScreenState extends State<BluetoothScanScreen> {
+  final GasBluetoothService _service = GasBluetoothService();
+
+  @override
+  void initState() {
+    super.initState();
+    _service.startScan();
+  }
+
+  @override
+  void dispose() {
+    _service.stopScan();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("أجهزة البلوتوث")),
+      body: Column(
+        children: [
+          ValueListenableBuilder<bool>(
+            valueListenable: _service.isScanning,
+            builder: (context, isScanning, child) {
+              return isScanning ? const LinearProgressIndicator() : const SizedBox(height: 4);
+            },
+          ),
+          Expanded(
+            child: ValueListenableBuilder<List<ScanResult>>(
+              valueListenable: _service.scanResults,
+              builder: (context, results, child) {
+                if (results.isEmpty) {
+                  return const Center(child: Text("جاري البحث عن أجهزة..."));
+                }
+                return ListView.builder(
+                  itemCount: results.length,
+                  itemBuilder: (context, index) {
+                    final result = results[index];
+                    return ListTile(
+                      leading: const Icon(Icons.bluetooth),
+                      title: Text(result.device.platformName.isNotEmpty ? result.device.platformName : "جهاز غير معروف"),
+                      subtitle: Text("${result.device.remoteId} (${result.rssi} dBm)"),
+                      trailing: ElevatedButton(
+                        child: const Text("اتصال"),
+                        onPressed: () {
+                          _service.connect(result.device);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
