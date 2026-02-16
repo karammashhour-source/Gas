@@ -1,0 +1,23 @@
+# الرابط الأساسي لنظام iOS
+platform :ios, '13.0'
+
+# هذا الجزء يضمن عدم فشل البناء إذا لم تكن الملفات موجودة محلياً
+prepare_command "ruby -e \"require 'fileutils'; FileUtils.touch('Flutter/Generated.xcconfig')\""
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    
+    # حل مشكلة Firebase التي تسببت في الخطأ السابق بـ GitHub
+    target.build_configurations.each do |config|
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+    end
+  end
+end
