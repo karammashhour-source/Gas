@@ -1,23 +1,44 @@
-# الرابط الأساسي لنظام iOS
+# 1. تعريف مسار فلاتر برمجياً لضمان عمله على سيرفر GitHub
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first."
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/\s*FLUTTER_ROOT\s*=\s*(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+# 2. استيراد الملف المساعد (Podhelper) الذي يحتوي على دوال فلاتر الأساسية
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+# 3. إعدادات المنصة (iOS 13 فما فوق لضمان توافق Firebase)
 platform :ios, '13.0'
 
-# هذا الجزء يضمن عدم فشل البناء إذا لم تكن الملفات موجودة محلياً
-prepare_command "ruby -e \"require 'fileutils'; FileUtils.touch('Flutter/Generated.xcconfig')\""
-
+# 4. إعدادات الهدف (Target)
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
+  # تحميل مكتبات فلاتر (هذا السطر الذي كان يسبب الخطأ سابقاً)
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 end
 
+# 5. التعديلات الإضافية لحل مشاكل البناء في GitHub Actions
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     
-    # حل مشكلة Firebase التي تسببت في الخطأ السابق بـ GitHub
     target.build_configurations.each do |config|
+      # الإصلاح السحري لمشكلة Firebase (Non-modular header)
       config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      config.build_settings['DEFINES_MODULE'] = 'YES'
+      
+      # توحيد إصدار النظام المستهدف لجميع المكتبات
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
     end
   end
 end
