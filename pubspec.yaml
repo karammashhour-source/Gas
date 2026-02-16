@@ -27,6 +27,7 @@ dependencies:
   firebase_messaging: ^14.7.19
   flutter_phone_direct_caller: ^2.1.1
   flutter_blue_plus: ^1.30.0
+  permission_handler: ^11.3.0
 
 dev_dependencies:
   flutter_test:

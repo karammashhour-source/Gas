@@ -4290,7 +4290,16 @@ class _BluetoothScanScreenState extends State<BluetoothScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("أجهزة البلوتوث")),
+      appBar: AppBar(
+        title: const Text("أجهزة البلوتوث"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _service.startScan(),
+            tooltip: "إعادة البحث",
+          ),
+        ],
+      ),
       body: Column(
         children: [
           ValueListenableBuilder<bool>(
@@ -4303,24 +4312,54 @@ class _BluetoothScanScreenState extends State<BluetoothScanScreen> {
             child: ValueListenableBuilder<List<ScanResult>>(
               valueListenable: _service.scanResults,
               builder: (context, results, child) {
-                if (results.isEmpty) {
-                  return const Center(child: Text("جاري البحث عن أجهزة..."));
-                }
-                return ListView.builder(
-                  itemCount: results.length,
-                  itemBuilder: (context, index) {
-                    final result = results[index];
-                    return ListTile(
-                      leading: const Icon(Icons.bluetooth),
-                      title: Text(result.device.platformName.isNotEmpty ? result.device.platformName : "جهاز غير معروف"),
-                      subtitle: Text("${result.device.remoteId} (${result.rssi} dBm)"),
-                      trailing: ElevatedButton(
-                        child: const Text("اتصال"),
-                        onPressed: () {
-                          _service.connect(result.device);
-                          Navigator.pop(context);
-                        },
-                      ),
+                return ValueListenableBuilder<bool>(
+                  valueListenable: _service.isScanning,
+                  builder: (context, isScanning, _) {
+                    if (results.isEmpty) {
+                      if (isScanning) {
+                        return const Center(child: Text("جاري البحث عن أجهزة..."));
+                      } else {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.bluetooth_disabled, size: 64, color: Colors.grey),
+                              const SizedBox(height: 16),
+                              const Text("لم يتم العثور على أجهزة."),
+                              const SizedBox(height: 8),
+                              const Text(
+                                "تأكد من تشغيل البلوتوث والموقع (GPS)\nوإعطاء الصلاحيات للتطبيق",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.refresh),
+                                label: const Text("إعادة البحث"),
+                                onPressed: () => _service.startScan(),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    }
+                    return ListView.builder(
+                      itemCount: results.length,
+                      itemBuilder: (context, index) {
+                        final result = results[index];
+                        return ListTile(
+                          leading: const Icon(Icons.bluetooth),
+                          title: Text(result.device.platformName.isNotEmpty ? result.device.platformName : "جهاز غير معروف"),
+                          subtitle: Text("${result.device.remoteId} (${result.rssi} dBm)"),
+                          trailing: ElevatedButton(
+                            child: const Text("اتصال"),
+                            onPressed: () {
+                              _service.connect(result.device);
+                              Navigator.pop(context);
+                            },
+                          ),
+                        );
+                      },
                     );
                   },
                 );
@@ -6350,7 +6389,7 @@ class NotificationService {
     }
     // Initialize for Android (using default app icon)
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/launcher_icon');
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings();
 
@@ -6518,7 +6557,7 @@ class NotificationService {
     final String resourceName = switch (type) {
       'danger' => 'ic_notification_danger',
       'warning' => 'ic_notification_warning',
-      _ => '@mipmap/ic_launcher', // الأيقونة الافتراضية للحالات العادية
+      _ => '@mipmap/launcher_icon', // الأيقونة الافتراضية للحالات العادية
     };
     final Color accentColor = switch (type) {
       'danger' => Colors.red,

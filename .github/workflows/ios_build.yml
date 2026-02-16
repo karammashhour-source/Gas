@@ -56,6 +56,14 @@ jobs:
           fi
           echo "✅ GoogleService-Info.plist exists."
 
+      - name: Add Bluetooth Permissions to Info.plist
+        run: |
+          PLIST="ios/Runner/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :NSBluetoothAlwaysUsageDescription string 'This app uses Bluetooth to connect to and monitor the gas sensor.'" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :NSBluetoothPeripheralUsageDescription string 'This app uses Bluetooth to find and connect to the gas sensor.'" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'This app uses location to find nearby Bluetooth devices.'" $PLIST
+          echo "✅ Added Bluetooth permissions to Info.plist"
+
       - name: Install CocoaPods
         run: |
           cd ios

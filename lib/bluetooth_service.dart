@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class GasBluetoothService {
   static final GasBluetoothService _instance = GasBluetoothService._internal();
@@ -34,6 +35,24 @@ class GasBluetoothService {
     isScanning.value = true;
 
     try {
+      // طلب الأذونات الضرورية (الموقع والبلوتوث) قبل البدء
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await [
+          Permission.location,
+          Permission.bluetoothScan,
+          Permission.bluetoothConnect,
+        ].request();
+      }
+
+      // محاولة تشغيل البلوتوث إذا كان مغلقاً (للأندرويد فقط)
+      if (FlutterBluePlus.adapterStateNow != BluetoothAdapterState.on) {
+        try {
+          await FlutterBluePlus.turnOn();
+        } catch (e) {
+          debugPrint("Could not turn on Bluetooth: $e");
+        }
+      }
+
       // البحث عن الأجهزة لمدة 15 ثانية
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
       
